@@ -28,6 +28,13 @@ export function Dashboard() {
     args: userAddress ? [userAddress] : undefined,
   });
 
+  const { data: profileData, refetch: refetchProfile } = useReadContract({
+    address: FUSION_ADDRESSES.CREDIT_PASSPORT,
+    abi: CREDIT_PASSPORT_ABI,
+    functionName: 'getProfile',
+    args: userAddress ? [userAddress] : undefined,
+  });
+
   const { isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash: pendingTxHash,
   });
@@ -36,16 +43,37 @@ export function Dashboard() {
     if (isConfirmed) {
       refetchBalance();
       refetchLoan();
+      refetchProfile();
       setPendingTxHash(undefined);
     }
-  }, [isConfirmed, refetchBalance, refetchLoan]);
+  }, [isConfirmed, refetchBalance, refetchLoan, refetchProfile]);
 
   const loan = loanData as unknown as any[];
   const isActive = loan ? loan[4] : false;
   const totalDue = loan ? loan[3] : BigInt(0);
   
+  const profile = profileData as unknown as any[];
+  const isInitialized = profile ? Boolean(profile[5]) : false;
+
   const usdcBalance = balance ? formatUnits(balance as bigint, 18) : '0.00';
   const realDebt = isActive ? formatUnits(totalDue as bigint, 18) : '0.00';
+
+  const handleInitializePassport = async () => {
+    try {
+      setMarketActionLoading(true);
+      const hash = await writeContractAsync({
+        address: FUSION_ADDRESSES.CREDIT_PASSPORT,
+        abi: CREDIT_PASSPORT_ABI,
+        functionName: 'initializeMyProfile',
+        args: [],
+      });
+      setPendingTxHash(hash);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setMarketActionLoading(false);
+    }
+  };
 
   const handleBorrow = async () => {
     try {
@@ -150,6 +178,28 @@ export function Dashboard() {
             Waiting for Sepolia to mine transaction... Do not click anything.
           </div>
         )}
+
+        <div className="flex items-center justify-between p-4 bg-cyan-950/20 border border-cyan-500/30 rounded-xl">
+          <div>
+            <p className="text-sm font-bold text-cyan-300">Identity Status</p>
+            <p className="text-xs text-gray-400">
+              {isInitialized
+                ? 'Passport initialized. You are eligible to borrow.'
+                : 'Passport not initialized. Click to register your wallet on-chain.'}
+            </p>
+          </div>
+          <button
+            onClick={handleInitializePassport}
+            disabled={marketActionLoading || isInitialized || !!pendingTxHash}
+            className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors ${
+              isInitialized
+                ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/40 cursor-default'
+                : 'bg-cyan-500 text-black hover:bg-cyan-400 disabled:opacity-50'
+            }`}
+          >
+            {isInitialized ? 'Passport Active' : 'Initialize Passport'}
+          </button>
+        </div>
         
         <div className="p-5 bg-black/40 border border-slate-700/50 rounded-xl mt-6">
           <div className="flex justify-between items-center mb-4">
@@ -159,19 +209,31 @@ export function Dashboard() {
           <div className="flex flex-col sm:flex-row gap-3 mt-4">
             <input 
               type="number" 
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              disabled={isActive}
-              className="w-full sm:w-24 bg-black/60 border border-slate-600 rounded-lg px-3 py-2 text-white outline-none focus:border-cyan-400 text-center disabled:opacity-50"
+              value={amount} 
+              onChange={(e) => setAmount(e.target.value)} 
+              disabled={isActive} 
+              className="w-full sm:w-24 bg-black/60 border border-slate-600 rounded-lg px-3 py-2 text-white outline-none focus:border-cyan-400 text-center disabled:opacity-50" 
             />
             <div className="flex flex-1 gap-2">
-              <button onClick={handleBorrow} disabled={marketActionLoading || isActive || !!pendingTxHash} className="flex-1 py-2 px-2 text-sm bg-cyan-500 text-black font-bold rounded-lg hover:bg-cyan-400 transition-colors disabled:opacity-50">
+              <button 
+                onClick={handleBorrow} 
+                disabled={marketActionLoading || isActive || !isInitialized || !!pendingTxHash} 
+                className="flex-1 py-2 px-2 text-sm bg-cyan-500 text-black font-bold rounded-lg hover:bg-cyan-400 transition-colors disabled:opacity-50"
+              >
                 BORROW
               </button>
-              <button onClick={handleApprove} disabled={marketActionLoading || !!pendingTxHash} className="flex-1 py-2 px-2 text-sm bg-blue-600/30 border border-blue-500 text-blue-300 font-bold rounded-lg hover:bg-blue-600/50 transition-colors disabled:opacity-50">
+              <button 
+                onClick={handleApprove} 
+                disabled={marketActionLoading || !!pendingTxHash} 
+                className="flex-1 py-2 px-2 text-sm bg-blue-600/30 border border-blue-500 text-blue-300 font-bold rounded-lg hover:bg-blue-600/50 transition-colors disabled:opacity-50"
+              >
                 1. Approve
               </button>
-              <button onClick={handleRepay} disabled={marketActionLoading || !isActive || !!pendingTxHash} className="flex-1 py-2 px-2 text-sm bg-transparent border border-white text-white font-bold rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50">
+              <button 
+                onClick={handleRepay} 
+                disabled={marketActionLoading || !isActive || !!pendingTxHash} 
+                className="flex-1 py-2 px-2 text-sm bg-transparent border border-white text-white font-bold rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
+              >
                 2. Repay
               </button>
             </div>
