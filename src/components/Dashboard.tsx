@@ -49,14 +49,14 @@ export function Dashboard() {
   }, [isConfirmed, refetchBalance, refetchLoan, refetchProfile]);
 
   const loan = loanData as unknown as any[];
-  const isActive = loan ? loan[4] : false;
-  const totalDue = loan ? loan[3] : BigInt(0);
+  const isActive = loan ? Boolean(loan[4]) : false;
+  const totalDue = loan ? (loan[3] as bigint) : BigInt(0);
   
   const profile = profileData as unknown as any[];
   const isInitialized = profile ? Boolean(profile[5]) : false;
 
   const usdcBalance = balance ? formatUnits(balance as bigint, 18) : '0.00';
-  const realDebt = isActive ? formatUnits(totalDue as bigint, 18) : '0.00';
+  const realDebt = isActive ? formatUnits(totalDue, 18) : '0.00';
 
   const handleInitializePassport = async () => {
     try {
@@ -65,7 +65,7 @@ export function Dashboard() {
         address: FUSION_ADDRESSES.CREDIT_PASSPORT,
         abi: CREDIT_PASSPORT_ABI,
         functionName: 'initializeMyProfile',
-        args: [],
+        gas: BigInt(500000),
       });
       setPendingTxHash(hash);
     } catch (err) {
@@ -83,6 +83,7 @@ export function Dashboard() {
         abi: LENDING_POOL_ABI,
         functionName: 'borrow',
         args: [parseUnits(amount, 18)],
+        gas: BigInt(500000),
       });
       setPendingTxHash(hash);
     } catch (err) {
@@ -118,7 +119,7 @@ export function Dashboard() {
         address: FUSION_ADDRESSES.LENDING_POOL,
         abi: LENDING_POOL_ABI,
         functionName: 'repay',
-        args: [], 
+        gas: BigInt(500000),
       });
       setPendingTxHash(hash);
     } catch (err) {
