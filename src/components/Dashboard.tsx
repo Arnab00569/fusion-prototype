@@ -58,6 +58,23 @@ export function Dashboard() {
   const usdcBalance = balance ? formatUnits(balance as bigint, 18) : '0.00';
   const realDebt = isActive ? formatUnits(totalDue, 18) : '0.00';
 
+  const handleFaucet = async () => {
+    try {
+      setMarketActionLoading(true);
+      const hash = await writeContractAsync({
+        address: FUSION_ADDRESSES.MOCK_USDC,
+        abi: MOCK_USDC_ABI,
+        functionName: 'faucet',
+        gas: BigInt(500000),
+      });
+      setPendingTxHash(hash);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setMarketActionLoading(false);
+    }
+  };
+
   const handleInitializePassport = async () => {
     try {
       setMarketActionLoading(true);
@@ -156,19 +173,28 @@ export function Dashboard() {
 
   return (
     <div className="w-full text-white pb-20">
-      <div className="flex justify-between items-end mb-6 border-b border-slate-700/50 pb-4">
+      <div className="flex justify-between items-start mb-6 border-b border-slate-700/50 pb-4">
         <div>
           <h3 className="text-xl font-bold text-white">PROTOCOL DASHBOARD</h3>
           <p className="text-xs text-blue-400 mt-1">Live Sepolia Data</p>
         </div>
         <div className="flex gap-3">
-          <div className="text-right bg-red-950/40 px-4 py-2 rounded-lg border border-red-900/50">
+          <div className="text-right bg-red-950/40 px-4 py-2 rounded-lg border border-red-900/50 h-fit">
             <p className="text-[10px] text-gray-400 uppercase tracking-wider">Active Debt</p>
             <p className="text-lg font-mono font-bold text-red-400">{Number(realDebt).toFixed(2)} fUSD</p>
           </div>
-          <div className="text-right bg-black/40 px-4 py-2 rounded-lg border border-slate-700/50">
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider">Wallet Balance</p>
-            <p className="text-lg font-mono font-bold text-cyan-400">{Number(usdcBalance).toFixed(2)} fUSD</p>
+          <div className="text-right bg-black/40 px-4 py-2 rounded-lg border border-slate-700/50 flex flex-col justify-between">
+            <div>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider">Wallet Balance</p>
+              <p className="text-lg font-mono font-bold text-cyan-400">{Number(usdcBalance).toFixed(2)} fUSD</p>
+            </div>
+            <button 
+              onClick={handleFaucet} 
+              disabled={marketActionLoading || !!pendingTxHash}
+              className="mt-2 w-full px-2 py-1 text-[10px] uppercase tracking-wider bg-cyan-900/50 text-cyan-400 border border-cyan-700 rounded hover:bg-cyan-800 transition-colors disabled:opacity-50"
+            >
+              Get Test fUSD
+            </button>
           </div>
         </div>
       </div>
